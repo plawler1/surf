@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beach Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: url('https://www.example.com/beach-background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            color: #fff;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #gameContainer {
+            display: none;
+            position: relative;
+            width: 400px;
+            height: 400px;
+            border: 2px solid #000;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        #startScreen, #gameOverScreen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: #000;
+        }
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            display: none;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            background-color: #87CEEB; /* Ocean blue */
+            border: 2px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <h1>Welcome to Beach Snake Game!</h1>
+        <div>High Score: <span id="highScore">0</span></div>
+        <p>Use the arrow keys to control the snake:</p>
+        <ul>
+            <li>Arrow Up: Move Up</li>
+            <li>Arrow Down: Move Down</li>
+            <li>Arrow Left: Move Left</li>
+            <li>Arrow Right: Move Right</li>
+        </ul>
+        <button class="button" data-speed="400">Easy</button>
+        <button class="button" data-speed="250">Medium</button>
+        <button class="button" data-speed="150">Hard</button>
+    </div>
+    <div id="gameContainer">
+        <div id="score">Score: 0</div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="countdown">3</div>
+    </div>
+    <div id="gameOverScreen" style="display: none;">
+        <h1>Game Over!</h1>
+        <div>Your Score: <span id="finalScore">0</span></div>
+        <button class="button" id="restartButton">Restart</button>
+    </div>
+    <script>
+        const difficultyButtons = document.querySelectorAll('.button[data-speed]');
+        const startScreen = document.getElementById('startScreen');
+        const gameContainer = document.getElementById('gameContainer');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('highScore');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+        const canvas = document.getElementById('gameCanvas');
+        const countdown = document.getElementById('countdown');
+        const ctx = canvas.getContext('2d');
+
+        let snake = [{ x: 200, y: 200 }];
+        let direction = 'RIGHT';
+        let food = { x: Math.floor(Math.random() * 20) * 20, y: Math.floor(Math.random() * 20) * 20 };
+        let score = 0;
+        let gameSpeed = 100;
+        let gameInterval;
+        let highScore = localStorage.getItem('highScore') || 0;
+        highScoreDisplay.textContent = highScore;
+
+        difficultyButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                gameSpeed = parseInt(button.getAttribute('data-speed'));
+                startScreen.style.display = 'none';
+                gameContainer.style.display = 'block';
+                startCountdown();
+            });
+        });
+
+        restartButton.addEventListener('click', () => {
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+        });
+
+        function startCountdown() {
+            let count = 3;
+            countdown.style.display = 'block';
+            countdown.textContent = count;
+            const countdownInterval = setInterval(() => {
+                count--;
+                countdown.textContent = count;
+                if (count === 0) {
+                    clearInterval(countdownInterval);
+                    countdown.style.display = 'none';
+                    document.addEventListener('keydown', changeDirection);
+                    gameInterval = setInterval(gameLoop, gameSpeed);
+                }
+            }, 1000);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+        }
+
+        function update() {
+            const head = { x: snake[0].x, y: snake[0].y };
+            if (direction === 'RIGHT') head.x += 20;
+            if (direction === 'LEFT') head.x -= 20;
+            if (direction === 'UP') head.y -= 20;
+            if (direction === 'DOWN') head.y += 20;
+
+            snake.unshift(head);
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreDisplay.textContent = 'Score: ' + score;
+                food = { x: Math.floor(Math.random() * 20) * 20, y: Math.floor(Math.random() * 20) * 20 };
+            } else {
+                snake.pop();
+            }
+
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)) {
+                clearInterval(gameInterval);
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('highScore', highScore);
+                    highScoreDisplay.textContent = highScore;
+                }
+                finalScoreDisplay.textContent = score;
+                gameContainer.style.display = 'none';
+                gameOverScreen.style.display = 'flex';
+                resetGame();
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#FFD700'; // Sand color
+            snake.forEach(segment => ctx.fillRect(segment.x, segment.y, 20, 20));
+            ctx.fillStyle = '#FF4500'; // Food color
+            ctx.fillRect(food.x, food.y, 20, 20);
+        }
+
+        function changeDirection(event) {
+            if (event.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
+            if (event.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
+            if (event.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
+            if (event.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+        }
+
+        function resetGame() {
+            snake = [{ x: 200, y: 200 }];
+            direction = 'RIGHT';
+            score = 0;
+            scoreDisplay.textContent = 'Score: ' + score;
+            food = { x: Math.floor(Math.random() * 20) * 20, y: Math.floor(Math.random() * 20) * 20 };
+        }
+    </script>
+</body>
+</html>
+
